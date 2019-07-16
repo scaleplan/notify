@@ -1,0 +1,13 @@
+
+{
+    "name": "scaleplan/notify",
+    "description": "Async notification system by websocket and pusher.com",
+    "autoload": {
+        "psr-4": {
+            "Scaleplan\\Notify\\": "src/"
+        }
+    },
+    "require": {
+        "pusher/pusher-php-server": "^4.0"
+    }
+}
