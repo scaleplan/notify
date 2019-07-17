@@ -2,7 +2,9 @@
 
 namespace Scaleplan\Notify;
 
+use App\Exceptions\Service\ServiceException;
 use Pusher\Pusher;
+use Scaleplan\Notify\Interfaces\NotifyInterface;
 use Scaleplan\Notify\Structures\AbstractStructure;
 use Scaleplan\Redis\RedisSingleton;
 use function Scaleplan\Helpers\get_required_env;
@@ -12,7 +14,7 @@ use function Scaleplan\Helpers\get_required_env;
  *
  * @package Scaleplan\Notify
  */
-class Notify
+class Notify implements NotifyInterface
 {
     public const REDIS_NOTIFICATIONS_KEY_POSTFIX = 'notifications';
 
@@ -78,24 +80,28 @@ class Notify
     }
 
     /**
-     * @param int[] $users
+     * @param array $users
      * @param string $channelName
      * @param string $eventName
      * @param AbstractStructure $data
      *
+     * @throws ServiceException
      * @throws \Pusher\PusherException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
     public function guaranteedSend(array $users, string $channelName, string $eventName, AbstractStructure $data) : void
     {
-        $disconnectUsers = $users;
         $response = $this->pusher->get("/channels/$channelName/users");
         if (!$response
             || $response['status'] !== 200
-            || empty($channelUsers = array_column(json_decode($response['body'], true)['users'], 'id'))
-            || $disconnectUsers = array_diff($users, $channelUsers)
+            || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
         ) {
+            throw new ServiceException('Pusher.com not available.');
+        }
+
+        $onlineUsers = array_column($onlineUsersArray['users'], 'id');
+        if ($disconnectUsers = array_diff($users, $onlineUsers)) {
             foreach ($disconnectUsers as $user) {
                 $this->getRedis()->hSet(
                     "{$this->key}:$user",
@@ -103,11 +109,9 @@ class Notify
                     json_encode($data->toArray(), JSON_UNESCAPED_UNICODE)
                 );
             }
-
-            return;
         }
 
-        $this->pusher->trigger($channelName, $eventName, $data->toArray());
+        $this->pusher->trigger($channelName, $eventName, $onlineUsers);
     }
 
     /**
