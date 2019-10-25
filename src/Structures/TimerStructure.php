@@ -111,7 +111,7 @@ class TimerStructure extends AbstractStructure implements ToArrayInterfaces
         return array_merge(
             parent::toArray(),
             [
-                'limits' => $this->limits,
+                'limits' => $this->limits->toArray(),
                 'start_time' => $this->startTime,
                 'href' => $this->href,
                 'title_hide_on' => $this->titleHideOn,
