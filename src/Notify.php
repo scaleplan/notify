@@ -2,8 +2,8 @@
 
 namespace Scaleplan\Notify;
 
-use App\Exceptions\Service\ServiceException;
 use Pusher\Pusher;
+use Scaleplan\Notify\Exceptions\NotifyException;
 use Scaleplan\Notify\Interfaces\NotifyInterface;
 use Scaleplan\Notify\Structures\AbstractStructure;
 use Scaleplan\Redis\RedisSingleton;
@@ -85,7 +85,7 @@ class Notify implements NotifyInterface
      * @param string $eventName
      * @param AbstractStructure $data
      *
-     * @throws ServiceException
+     * @throws NotifyException
      * @throws \Pusher\PusherException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
@@ -97,7 +97,7 @@ class Notify implements NotifyInterface
             || $response['status'] !== 200
             || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
         ) {
-            throw new ServiceException('Pusher.com not available.');
+            throw new NotifyException('Pusher.com not available.');
         }
 
         $onlineUsers = array_column($onlineUsersArray['users'], 'id');
