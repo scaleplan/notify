@@ -17,6 +17,7 @@ use function Scaleplan\Helpers\get_required_env;
 class Notify implements NotifyInterface
 {
     public const REDIS_NOTIFICATIONS_KEY_POSTFIX = 'notifications';
+    public const PINNED_FLAG                     = 'pinned';
 
     /**
      * @var Pusher
@@ -80,6 +81,27 @@ class Notify implements NotifyInterface
     }
 
     /**
+     * @param string $channelName
+     *
+     * @return array
+     *
+     * @throws NotifyException
+     * @throws \Pusher\PusherException
+     */
+    protected function getOnlineUsers(string $channelName) : array
+    {
+        $response = $this->pusher->get("/channels/$channelName/users");
+        if (!$response
+            || $response['status'] !== 200
+            || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
+        ) {
+            throw new NotifyException('Pusher.com not available.');
+        }
+
+        return array_column($onlineUsersArray['users'], 'id');
+    }
+
+    /**
      * @param array $users
      * @param string $channelName
      * @param string $eventName
@@ -92,31 +114,68 @@ class Notify implements NotifyInterface
      */
     public function guaranteedSend(array $users, string $channelName, string $eventName, AbstractStructure $data) : void
     {
-        $response = $this->pusher->get("/channels/$channelName/users");
-        if (!$response
-            || $response['status'] !== 200
-            || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
-        ) {
-            throw new NotifyException('Pusher.com not available.');
-        }
-
-        $onlineUsers = array_column($onlineUsersArray['users'], 'id');
+        $onlineUsers = $this->getOnlineUsers($channelName);
         if ($disconnectUsers = array_diff($users, $onlineUsers)) {
-            foreach ($disconnectUsers as $user) {
-                $this->getRedis()->hSet(
-                    "{$this->key}:$user",
-                    "$channelName:$eventName",
-                    json_encode($data->toArray(), JSON_UNESCAPED_UNICODE)
-                );
-            }
+            $this->saveToRedis($disconnectUsers, $channelName, $eventName, $data);
         }
 
         $this->pusher->trigger($channelName, $eventName, $onlineUsers);
     }
 
     /**
-     * @param int[] $users
+     * @param array $users
+     * @param string $channelName
+     * @param string $eventName
+     * @param AbstractStructure $data
      *
+     * @throws NotifyException
+     * @throws \Pusher\PusherException
+     * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
+     * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
+     */
+    public function pinNotify(array $users, string $channelName, string $eventName, AbstractStructure $data) : void
+    {
+        $this->saveToRedis($users, $channelName, $eventName, $data, true);
+
+        $onlineUsers = $this->getOnlineUsers($channelName);
+        $this->pusher->trigger($channelName, $eventName, $onlineUsers);
+    }
+
+    /**
+     * @param array $users
+     * @param string $channelName
+     * @param string $eventName
+     * @param AbstractStructure $data
+     * @param bool $isPinned
+     *
+     * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
+     * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
+     */
+    protected function saveToRedis(
+        array $users,
+        string $channelName,
+        string $eventName,
+        AbstractStructure $data,
+        bool $isPinned = false
+    ) : void
+    {
+        foreach ($users as $user) {
+            $key = "{$this->key}:$user";
+            $hashKey = "$channelName:$eventName:" . ($isPinned ? static::PINNED_FLAG : '');
+            $currentRecord = json_decode($this->getRedis()->hGet($key, $hashKey), true) ?? [];
+            $currentRecord[] = $data->toArray();
+            $this->getRedis()->hSet(
+                "{$this->key}:$user",
+                "$channelName:$eventName",
+                json_encode($currentRecord, JSON_UNESCAPED_UNICODE)
+            );
+        }
+    }
+
+    /**
+     * @param array $users
+     *
+     * @throws NotifyException
      * @throws \Pusher\PusherException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
@@ -124,9 +183,19 @@ class Notify implements NotifyInterface
     public function sendOld(array $users) : void
     {
         foreach ($users as $user) {
-            foreach ($this->getRedis()->hGetAll("{$this->key}:$user") as $channel => $data) {
-                [$channelName, $eventName] = explode(':', $channel);
-                $this->pusher->trigger($channelName, $eventName, $data, false, true);
+            $key = "{$this->key}:$user";
+            foreach ($this->getRedis()->hGetAll($key) as $channel => $data) {
+                [$channelName, $eventName, $isPinned] = explode(':', $channel);
+
+                $this->getRedis()->hDel($key, $channel);
+
+                $isPinned = $isPinned === static::PINNED_FLAG;
+                if ($isPinned) {
+                    $this->pinNotify([$user], $channelName, $eventName, $data);
+                    continue;
+                }
+
+                $this->guaranteedSend([$user], $channelName, $eventName, $data);
             }
         }
     }
