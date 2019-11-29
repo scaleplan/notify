@@ -90,7 +90,7 @@ class Notify implements NotifyInterface
      */
     protected function getOnlineUsers(string $channelName) : array
     {
-        $response = $this->pusher->get("/channels/$channelName/users");
+        $response = $this->pusher->presence_auth("presence-$channelName");
         if (!$response
             || $response['status'] !== 200
             || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
