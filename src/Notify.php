@@ -135,8 +135,6 @@ class Notify implements NotifyInterface
      * @param string $eventName
      * @param AbstractStructure $data
      *
-     * @throws NotifyException
-     * @throws \Pusher\PusherException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
@@ -153,11 +151,6 @@ class Notify implements NotifyInterface
         }
 
         $this->saveToRedis($channelName, $eventName, $data, true);
-
-        $onlineUsers = $this->getOnlineUsers($channelName);
-        if ($onlineUsers) {
-            $this->send($channelName, $eventName, $data);
-        }
     }
 
     /**
@@ -213,6 +206,7 @@ class Notify implements NotifyInterface
                     $data = StructureFabric::getStructure($data);
                     if ($isPinned) {
                         $this->pinNotify($channelName, $eventName, $data);
+                        $this->send($channelName, $eventName, $data);
                         continue;
                     }
 
