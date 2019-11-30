@@ -4,14 +4,13 @@ namespace Scaleplan\Notify\Structures;
 
 use Scaleplan\Notify\Constants\Statuses;
 use Scaleplan\Notify\Exceptions\StructureException;
-use Scaleplan\Notify\Interfaces\ToArrayInterfaces;
 
 /**
  * Class MessageStructure
  *
  * @package Scaleplan\Notify\Structures
  */
-class MessageStructure extends AbstractStructure implements ToArrayInterfaces
+class MessageStructure extends AbstractStructure
 {
     /**
      * @var string

@@ -2,12 +2,14 @@
 
 namespace Scaleplan\Notify\Structures;
 
+use Scaleplan\Notify\Interfaces\ToArrayInterfaces;
+
 /**
  * Class AbstractStructure
  *
  * @package Scaleplan\Notify\Structures
  */
-abstract class AbstractStructure
+abstract class AbstractStructure implements ToArrayInterfaces
 {
     /**
      * @var string

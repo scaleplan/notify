@@ -2,19 +2,22 @@
 
 namespace Scaleplan\Notify\Structures;
 
-use Scaleplan\Notify\Interfaces\ToArrayInterfaces;
-
 /**
  * Class TimerStructure
  *
  * @package Scaleplan\Notify\Structures
  */
-class TimerStructure extends AbstractStructure implements ToArrayInterfaces
+class TimerStructure extends AbstractStructure
 {
     /**
      * @var int
      */
     protected $startTime;
+
+    /**
+     * @var int
+     */
+    protected $initTime;
 
     /**
      * @var TimerLimitsStructure
@@ -32,11 +35,16 @@ class TimerStructure extends AbstractStructure implements ToArrayInterfaces
     protected $titleHideOn;
 
     /**
-     * @param int $beginTime
+     * TimerStructure constructor.
      */
-    public function calculateLimits(int $beginTime) : void
+    public function __construct()
     {
-        $this->limits = new TimerLimitsStructure($beginTime);
+        $this->initTime = time();
+    }
+
+    public function calculateLimits() : void
+    {
+        $this->limits = new TimerLimitsStructure($this->startTime);
     }
 
     /**
@@ -104,6 +112,22 @@ class TimerStructure extends AbstractStructure implements ToArrayInterfaces
     }
 
     /**
+     * @return int
+     */
+    public function getInitTime() : int
+    {
+        return $this->initTime;
+    }
+
+    /**
+     * @param int $initTime
+     */
+    public function setInitTime(int $initTime) : void
+    {
+        $this->initTime = $initTime;
+    }
+
+    /**
      * @return array
      */
     public function toArray() : array
@@ -111,10 +135,11 @@ class TimerStructure extends AbstractStructure implements ToArrayInterfaces
         return array_merge(
             parent::toArray(),
             [
-                'limits' => $this->limits->toArray(),
-                'start_time' => $this->startTime,
-                'href' => $this->href,
+                'limits'        => $this->limits->toArray(),
+                'start_time'    => $this->startTime,
+                'href'          => $this->href,
                 'title_hide_on' => $this->titleHideOn,
+                'init_time'     => $this->initTime,
             ]
         );
     }

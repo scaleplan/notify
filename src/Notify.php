@@ -6,6 +6,8 @@ use Pusher\Pusher;
 use Scaleplan\Notify\Exceptions\NotifyException;
 use Scaleplan\Notify\Interfaces\NotifyInterface;
 use Scaleplan\Notify\Structures\AbstractStructure;
+use Scaleplan\Notify\Structures\StructureFabric;
+use Scaleplan\Notify\Structures\TimerStructure;
 use Scaleplan\Redis\RedisSingleton;
 use function Scaleplan\Helpers\get_required_env;
 
@@ -73,11 +75,15 @@ class Notify implements NotifyInterface
      * @param string $eventName
      * @param AbstractStructure $data
      *
+     * @throws NotifyException
      * @throws \Pusher\PusherException
      */
     public function send(string $channelName, string $eventName, AbstractStructure $data) : void
     {
-        $this->pusher->trigger($channelName, $eventName, $data->toArray());
+        $onlineUsers = $this->getOnlineUsers($channelName);
+        if ($onlineUsers) {
+            $this->pusher->trigger($channelName, $eventName, $data->toArray());
+        }
     }
 
     /**
@@ -102,7 +108,6 @@ class Notify implements NotifyInterface
     }
 
     /**
-     * @param array $users
      * @param string $channelName
      * @param string $eventName
      * @param AbstractStructure $data
@@ -112,18 +117,20 @@ class Notify implements NotifyInterface
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
-    public function guaranteedSend(array $users, string $channelName, string $eventName, AbstractStructure $data) : void
+    public function guaranteedSend(string $channelName, string $eventName, AbstractStructure $data) : void
     {
         $onlineUsers = $this->getOnlineUsers($channelName);
-        if ($disconnectUsers = array_diff($users, $onlineUsers)) {
-            $this->saveToRedis($disconnectUsers, $channelName, $eventName, $data);
+        if (!$onlineUsers) {
+            $this->saveToRedis($channelName, $eventName, $data);
+            return;
         }
 
-        $this->pusher->trigger($channelName, $eventName, $onlineUsers);
+        if ($onlineUsers) {
+            $this->pusher->trigger($channelName, $eventName, $onlineUsers);
+        }
     }
 
     /**
-     * @param array $users
      * @param string $channelName
      * @param string $eventName
      * @param AbstractStructure $data
@@ -133,16 +140,37 @@ class Notify implements NotifyInterface
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
-    public function pinNotify(array $users, string $channelName, string $eventName, AbstractStructure $data) : void
+    public function pinNotify(string $channelName, string $eventName, AbstractStructure $data) : void
     {
-        $this->saveToRedis($users, $channelName, $eventName, $data, true);
+        if ($data instanceof TimerStructure) {
+            $currentStartTime = $data->getStartTime() - (time() - $data->getInitTime());
+            if ($currentStartTime <= 0) {
+                return;
+            }
+
+            $data->setInitTime(time());
+            $data->setStartTime($currentStartTime);
+        }
+
+        $this->saveToRedis($channelName, $eventName, $data, true);
 
         $onlineUsers = $this->getOnlineUsers($channelName);
-        $this->pusher->trigger($channelName, $eventName, $onlineUsers);
+        if ($onlineUsers) {
+            $this->send($channelName, $eventName, $data);
+        }
     }
 
     /**
-     * @param array $users
+     * @param string $channelName
+     *
+     * @return string
+     */
+    protected function getChannelRedisName(string $channelName) : string
+    {
+        return "{$this->key}:$channelName";
+    }
+
+    /**
      * @param string $channelName
      * @param string $eventName
      * @param AbstractStructure $data
@@ -152,50 +180,44 @@ class Notify implements NotifyInterface
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
     protected function saveToRedis(
-        array $users,
         string $channelName,
         string $eventName,
         AbstractStructure $data,
         bool $isPinned = false
     ) : void
     {
-        foreach ($users as $user) {
-            $key = "{$this->key}:$user";
-            $hashKey = "$channelName:$eventName:" . ($isPinned ? static::PINNED_FLAG : '');
-            $currentRecord = json_decode($this->getRedis()->hGet($key, $hashKey), true) ?? [];
-            $currentRecord[] = $data->toArray();
-            $this->getRedis()->hSet(
-                "{$this->key}:$user",
-                "$channelName:$eventName",
-                json_encode($currentRecord, JSON_UNESCAPED_UNICODE)
-            );
-        }
+        $hashKey = "$eventName:" . ($isPinned ? static::PINNED_FLAG : '');
+        $key = $this->getChannelRedisName($channelName);
+        $currentRecord = json_decode($this->getRedis()->hGet($key, $hashKey), true) ?? [];
+        $currentRecord[] = $data->toArray();
+        $this->getRedis()->hSet($key, $hashKey, json_encode($currentRecord, JSON_UNESCAPED_UNICODE));
     }
 
     /**
-     * @param array $users
+     * @param array $channelNames
      *
      * @throws NotifyException
      * @throws \Pusher\PusherException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
-    public function sendOld(array $users) : void
+    public function sendOld(array $channelNames) : void
     {
-        foreach ($users as $user) {
-            $key = "{$this->key}:$user";
-            foreach ($this->getRedis()->hGetAll($key) as $channel => $data) {
-                [$channelName, $eventName, $isPinned] = explode(':', $channel);
-
-                $this->getRedis()->hDel($key, $channel);
-
+        foreach ($channelNames as $channelName) {
+            $key = $this->getChannelRedisName($channelName);
+            foreach ($this->getRedis()->hGetAll($key) as $hashKey => $datas) {
+                [$eventName, $isPinned] = explode(':', $hashKey);
                 $isPinned = $isPinned === static::PINNED_FLAG;
-                if ($isPinned) {
-                    $this->pinNotify([$user], $channelName, $eventName, $data);
-                    continue;
-                }
+                $this->getRedis()->del($key);
+                foreach (json_decode($datas, true) as $data) {
+                    $data = StructureFabric::getStructure($data);
+                    if ($isPinned) {
+                        $this->pinNotify($channelName, $eventName, $data);
+                        continue;
+                    }
 
-                $this->guaranteedSend([$user], $channelName, $eventName, $data);
+                    $this->guaranteedSend($channelName, $eventName, $data);
+                }
             }
         }
     }

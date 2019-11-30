@@ -5,9 +5,9 @@ namespace Scaleplan\Notify\Interfaces;
 use Scaleplan\Notify\Structures\AbstractStructure;
 
 /**
- * Class Notify
+ * Interface NotifyInterface
  *
- * @package Scaleplan\Notify
+ * @package Scaleplan\Notify\Interfaces
  */
 interface NotifyInterface
 {
@@ -19,17 +19,23 @@ interface NotifyInterface
     public function send(string $channelName, string $eventName, AbstractStructure $data) : void;
 
     /**
-     * @param int[] $users
      * @param string $channelName
      * @param string $eventName
      * @param AbstractStructure $data
      */
-    public function guaranteedSend(array $users, string $channelName, string $eventName, AbstractStructure $data) : void;
+    public function guaranteedSend(string $channelName, string $eventName, AbstractStructure $data) : void;
 
     /**
-     * @param int[] $users
+     * @param string $channelName
+     * @param string $eventName
+     * @param AbstractStructure $data
      */
-    public function sendOld(array $users) : void;
+    public function pinNotify(string $channelName, string $eventName, AbstractStructure $data) : void;
+
+    /**
+     * @param array $channelNames
+     */
+    public function sendOld(array $channelNames) : void;
 
     /**
      * @param string $channelName
