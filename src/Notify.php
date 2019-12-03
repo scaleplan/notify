@@ -218,6 +218,30 @@ class Notify implements NotifyInterface
 
     /**
      * @param string $channelName
+     * @param string $eventName
+     * @param string $message
+     *
+     * @throws Exceptions\StructureException
+     * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
+     * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
+     */
+    public function unpinNotify(string $channelName, string $eventName, string $message) : void
+    {
+        $key = $this->getChannelRedisName($channelName);
+        $hashKey = $eventName . ':' . static::PINNED_FLAG;
+        $datas = json_decode($this->getRedis()->hGet($key, $hashKey), true);
+        foreach ($datas as $index => $data) {
+            $data = StructureFabric::getStructure($data);
+            if ($data->getMessage() === $message) {
+                unset($datas[$index]);
+            }
+        }
+
+        $this->getRedis()->hSet($key, $hashKey, json_encode($datas, JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * @param string $channelName
      * @param string $socketId
      * @param int $userId
      *
