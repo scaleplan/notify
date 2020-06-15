@@ -9,7 +9,7 @@ namespace Scaleplan\Notify\Exceptions;
  */
 class NotifyException extends \Exception
 {
-    public const MESSAGE = 'Notify error.';
+    public const MESSAGE = 'Ошибка оповещения.';
     public const CODE = 500;
 
     /**

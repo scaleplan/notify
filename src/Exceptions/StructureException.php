@@ -9,5 +9,5 @@ namespace Scaleplan\Notify\Exceptions;
  */
 class StructureException extends NotifyException
 {
-    public const MESSAGE = 'Structure error.';
+    public const MESSAGE = 'Ошибка структуры.';
 }

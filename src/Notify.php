@@ -101,7 +101,7 @@ class Notify implements NotifyInterface
             || $response['status'] !== 200
             || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
         ) {
-            throw new NotifyException('Pusher.com not available.');
+            throw new NotifyException('Pusher.com не доступен.');
         }
 
         return array_column($onlineUsersArray['users'], 'id');

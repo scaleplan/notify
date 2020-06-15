@@ -33,7 +33,7 @@ class MessageStructure extends AbstractStructure
     public function setStatus(string $status) : void
     {
         if (!\in_array($status, Statuses::ALL, true)) {
-            throw new StructureException("Status $status not allowed.");
+            throw new StructureException("Статус $status не существует.");
         }
 
         $this->status = $status;
