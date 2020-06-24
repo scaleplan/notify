@@ -10,6 +10,7 @@ use Scaleplan\Notify\Structures\StructureFabric;
 use Scaleplan\Notify\Structures\TimerStructure;
 use Scaleplan\Redis\RedisSingleton;
 use function Scaleplan\Helpers\get_required_env;
+use function Scaleplan\Translator\translate;
 
 /**
  * Class Notify
@@ -32,11 +33,16 @@ class Notify implements NotifyInterface
     private $key;
 
     /**
-     * AbstractNotify constructor.
+     * Notify constructor.
      *
      * @param string $namespace
      *
      * @throws \Pusher\PusherException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      */
     public function __construct(string $namespace)
@@ -53,6 +59,11 @@ class Notify implements NotifyInterface
     /**
      * @return \Redis
      *
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
@@ -77,6 +88,11 @@ class Notify implements NotifyInterface
      *
      * @throws NotifyException
      * @throws \Pusher\PusherException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      */
     public function send(string $channelName, string $eventName, AbstractStructure $data) : void
     {
@@ -93,6 +109,11 @@ class Notify implements NotifyInterface
      *
      * @throws NotifyException
      * @throws \Pusher\PusherException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      */
     protected function getOnlineUsers(string $channelName) : array
     {
@@ -101,7 +122,7 @@ class Notify implements NotifyInterface
             || $response['status'] !== 200
             || !\array_key_exists('users', $onlineUsersArray = json_decode($response['body'], true))
         ) {
-            throw new NotifyException('Pusher.com не доступен.');
+            throw new NotifyException(translate('notify.pusher-not-available'));
         }
 
         return array_column($onlineUsersArray['users'], 'id');
@@ -114,8 +135,14 @@ class Notify implements NotifyInterface
      *
      * @throws NotifyException
      * @throws \Pusher\PusherException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
+     *
      */
     public function guaranteedSend(string $channelName, string $eventName, AbstractStructure $data) : void
     {
@@ -135,6 +162,11 @@ class Notify implements NotifyInterface
      * @param string $eventName
      * @param AbstractStructure $data
      *
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
@@ -169,6 +201,11 @@ class Notify implements NotifyInterface
      * @param AbstractStructure $data
      * @param bool $isPinned
      *
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
@@ -189,8 +226,14 @@ class Notify implements NotifyInterface
     /**
      * @param array $channelNames
      *
+     * @throws Exceptions\StructureException
      * @throws NotifyException
      * @throws \Pusher\PusherException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */
@@ -222,6 +265,11 @@ class Notify implements NotifyInterface
      * @param string $message
      *
      * @throws Exceptions\StructureException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      * @throws \Scaleplan\Helpers\Exceptions\EnvNotFoundException
      * @throws \Scaleplan\Redis\Exceptions\RedisSingletonException
      */

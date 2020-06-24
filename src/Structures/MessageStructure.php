@@ -4,6 +4,7 @@ namespace Scaleplan\Notify\Structures;
 
 use Scaleplan\Notify\Constants\Statuses;
 use Scaleplan\Notify\Exceptions\StructureException;
+use function Scaleplan\Translator\translate;
 
 /**
  * Class MessageStructure
@@ -29,11 +30,16 @@ class MessageStructure extends AbstractStructure
      * @param string $status
      *
      * @throws StructureException
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      */
     public function setStatus(string $status) : void
     {
         if (!\in_array($status, Statuses::ALL, true)) {
-            throw new StructureException("Статус $status не существует.");
+            throw new StructureException(translate('notify.status-not-found', ['status' => $status,]));
         }
 
         $this->status = $status;

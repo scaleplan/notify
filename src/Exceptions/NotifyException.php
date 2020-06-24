@@ -2,6 +2,8 @@
 
 namespace Scaleplan\Notify\Exceptions;
 
+use function Scaleplan\Translator\translate;
+
 /**
  * Class NotifyException
  *
@@ -9,18 +11,28 @@ namespace Scaleplan\Notify\Exceptions;
  */
 class NotifyException extends \Exception
 {
-    public const MESSAGE = 'Ошибка оповещения.';
+    public const MESSAGE = 'notify.notification-error';
     public const CODE = 500;
 
     /**
-     * StructureException constructor.
+     * NotifyException constructor.
      *
      * @param string $message
      * @param int $code
      * @param \Throwable|null $previous
+     *
+     * @throws \ReflectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ContainerTypeNotSupportingException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\DependencyInjectionException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ParameterMustBeInterfaceNameOrClassNameException
+     * @throws \Scaleplan\DependencyInjection\Exceptions\ReturnTypeMustImplementsInterfaceException
      */
     public function __construct($message = '', $code = 0, \Throwable $previous = null)
     {
-        parent::__construct($message ?: static::MESSAGE, $code ?: static::CODE, $previous);
+        parent::__construct(
+            $message ?: translate(static::MESSAGE) ?: static::MESSAGE,
+            $code ?: static::CODE,
+            $previous
+        );
     }
 }
